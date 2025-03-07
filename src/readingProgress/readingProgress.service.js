@@ -1,21 +1,28 @@
 const readingProgressRepository = require("./readingProgress.repository");
 
-async function addReadingProgress(userId, juz, surah, ayat, catatan) {
+async function addReadingProgress(userId, juz, surah, catatan) {
     try {
         const progress = {
             userId,
             juz,
             surah,
-            ayat,
             catatan,
             status: "Sedang_dilakukan",
             isReading: true,
         };
+        console.log("📝 Data yang dikirim ke Prisma:", progress);
         return await readingProgressRepository.createProgress(progress);
     } catch (error) {
         throw new Error("Gagal menambahkan progress membaca: " + error.message);
     }
 }
+
+async function getAllUserProgress() {
+    const readingProgress = await readingProgressRepository.findAllUserProgress();
+    console.log("✅ Data dari Repository:", readingProgress); // Debugging
+    return readingProgress;
+}
+
 
 async function getUserReadingProgress(userId) {
     try {
@@ -88,6 +95,7 @@ async function removeReadingProgress(progressId) {
 
 module.exports = { 
     addReadingProgress, 
+    getAllUserProgress,
     getUserReadingProgress, 
     getProgressById,
     markAsComplete, 

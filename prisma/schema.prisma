@@ -32,11 +32,10 @@ model ReadingProgress{
   id Int    @id @default(autoincrement())
   userId    Int
   juz       String
-  surah     String
-  ayat      String
+  surah     String?
   catatan   String?
   status    Status   @default(Sedang_dilakukan)
-  isReading Boolean  @default(false) // ✅ Tambahkan untuk melacak apakah user sedang membaca
+  isReading Boolean  @default(true) // ✅ Tambahkan untuk melacak apakah user sedang membaca
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) // ✅ Tambahkan onDelete: Cascade

@@ -1,4 +1,5 @@
 const prisma = require("../db");
+const { PrismaClient } = require("@prisma/client"); // Import Prisma
 
 async function createProgress(progressData) {
     try {
@@ -8,6 +9,28 @@ async function createProgress(progressData) {
         throw new Error("Gagal menambahkan progress membaca di repository: " + error.message);
     }
 }
+
+async function findAllUserProgress() {
+    const readingProgress = await prisma.readingProgress.findMany({
+        select: {
+            id: true,
+            userId: true,
+            juz: true,
+            surah: true,
+            catatan: true,
+            status: true,
+            user: {
+                select:{
+                    username : true
+                }
+            }
+        },
+    });
+    console.log("✅ Data dari Database:", readingProgress); // Debugging
+    return readingProgress;
+}
+
+
 
 async function findProgressByUserId(userId) {
     return prisma.readingProgress.findMany({ where: { userId: parseInt(userId) } });
@@ -27,7 +50,6 @@ async function findActiveReadingUsers() {
             },
             juz: true,
             surah: true,
-            ayat: true,
             catatan: true,
             createdAt: true
         }
@@ -47,19 +69,50 @@ async function findProgressById(progressId) {
     }
 }
 
+// async function updateProgressStatus(progressId, status) {
+//     try {
+//         const isReading = status === "Sedang_dilakukan"; // Harusnya false jika status bukan "Sedang_dilakukan"
+//         const updatedProgress = await prisma.readingProgress.update({
+//             where: { id: parseInt(progressId) },
+//             data: { status, isReading }, // isReading harusnya jadi false kalau statusnya "selesai"
+//         });
+
+//         return updatedProgress;
+//     } catch (error) {
+//         throw new Error("Gagal memperbarui status progress: " + error.message);
+//     }
+// }
+
 async function updateProgressStatus(progressId, status) {
     try {
-        const isReading = status === "Sedang_dilakukan"; // Jika sedang dilakukan, aktif (true), jika selesai, nonaktif (false
+        const normalizedStatus = status.toLowerCase();
+        const isReading = normalizedStatus === "sedang_dilakukan"; 
+
+        console.log("🚀 Sebelum update (cek di database):");
+        const beforeUpdate = await prisma.readingProgress.findUnique({
+            where: { id: parseInt(progressId) },
+            select: { status: true, isReading: true }
+        });
+        console.log(beforeUpdate);
+
+        console.log("📢 Akan mengupdate:", { status, isReading });
+
         const updatedProgress = await prisma.readingProgress.update({
             where: { id: parseInt(progressId) },
-            data: { status, isReading },
+            data: { status, isReading }
         });
+
+        console.log("✅ Setelah update (cek di database lagi):", updatedProgress);
 
         return updatedProgress;
     } catch (error) {
+        console.error("❌ Gagal memperbarui status progress:", error.message);
         throw new Error("Gagal memperbarui status progress: " + error.message);
     }
 }
+
+
+
 
 // async function updateProgressStatus(progressId, status, catatan = null) {
 //     try {
@@ -118,6 +171,7 @@ async function deleteProgress(progressId) {
 
 module.exports = { 
     createProgress, 
+    findAllUserProgress,
     findProgressByUserId, 
     findProgressById,
     findActiveReadingUsers,
