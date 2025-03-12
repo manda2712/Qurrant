@@ -1,4 +1,3 @@
-
 const express = require("express");
 const router = express.Router();
 const readingProgressService = require("./readingProgress.service");
@@ -7,79 +6,147 @@ const authorizationAdmin = require("../middleware/adminAuthorization");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+
 router.post("/progress", authorizeJWT, async (req, res) => {
     try {
-        const { juz, surah, catatan, status } = req.body;
-        const userIdFromToken = req.user.userId;
+        console.log("📥 Data diterima di backend:", req.body);
 
-        if (!juz || !surah || !catatan || !status) {
-            return res.status(400).json({ message: "Semua field wajib diisi!" });
+        const { juz, surah, status, catatan } = req.body;
+        const userId = req.user.userId; // Ambil userId dari token
+
+        if (!juz || !surah || !status) { 
+            return res.status(400).json({ message: "Semua field harus diisi!" });
         }
 
-        // 🛠️ Normalisasi format status agar konsisten
-        const statusFormatted = status.toLowerCase().trim(); // Pastikan status tidak ada spasi & huruf kecil dulu
-        const validStatus = {
-            "belum dibaca": "belum_dibaca",
-            "sedang dilakukan": "Sedang_dilakukan",
-            "selesai": "Selesai"
-        };
+        const result = await readingProgressService.addReadingProgress(userId, juz, surah, catatan);
 
-        // Cek apakah status yang dikirim valid
-        if (!validStatus[statusFormatted]) {
-            return res.status(400).json({ 
-                message: `Status tidak valid! Harus salah satu dari: ${Object.keys(validStatus).join(", ")}` 
-            });
+        if (!result.success) {
+            return res.status(result.status || 500).json({ message: result.message });
         }
 
-        console.log("🟢 User ID dari token:", userIdFromToken);
-        console.log("🔍 Mengecek apakah progress sudah ada untuk surah ini...");
-
-        // Cari progress berdasarkan user, juz, dan surah
-        const existingProgress = await prisma.readingProgress.findFirst({
-            where: {
-                userId: userIdFromToken,
-                juz,
-                surah,
-            },
-        });
-
-        if (existingProgress) {
-            console.log("⚠️ Progress untuk surah ini sudah ada! Mengupdate status...");
-
-            const updatedProgress = await prisma.readingProgress.update({
-                where: { id: existingProgress.id },
-                data: { status: validStatus[statusFormatted], catatan }
-            });
-
-            return res.status(200).json({ 
-                message: "Progress diperbarui!", 
-                data: updatedProgress 
-            });
-        }
-
-        console.log("🚀 Belum ada progress untuk surah ini, membuat progress baru...");
-        
-        const newProgress = await prisma.readingProgress.create({
-            data: {
-                userId: userIdFromToken,
-                juz,
-                surah,
-                catatan,
-                status: validStatus[statusFormatted], // Simpan status dengan format yang benar
-            },
-        });
-
-        res.status(201).json({ 
-            message: "Progress berhasil ditambahkan!", 
-            data: newProgress 
-        });
+        res.status(201).json({ message: "Progress berhasil ditambahkan!", data: result.data });
     } catch (error) {
-        console.error("❌ Error saat menambahkan atau memperbarui progress:", error);
-        res.status(500).json({ message: "Gagal menambahkan atau memperbarui progress" });
+        console.error("❌ Error backend:", error);
+        res.status(500).json({ message: "Gagal menambahkan progress" });
     }
 });
 
-router.get("/", async (req, res) => {
+
+router.get("/get/progress", async (req, res) => {
+    try {
+        const progress = await prisma.readingProgress.findMany({
+            select: {
+                juz: true,
+                status: true,
+                user: {
+                    select: { username: true }
+                }
+            }
+        });
+
+        res.json(progress.map(item => ({
+            juz: item.juz,
+            status: item.status,
+            username: item.user?.username || "Anonim"
+        })));
+    } catch (error) {
+        console.error("Error fetching progress:", error);
+        res.status(500).json({ message: "Gagal mengambil progress" });
+    }
+});
+
+// Endpoint untuk mendapatkan progress berdasarkan ID
+// router.get("/progress/:id", async (req, res) => {
+//     try {
+//         const progressId = parseInt(req.params.id);
+//         console.log("🆔 Mencari progress dengan ID:", progressId);
+
+//         if (isNaN(progressId)) {
+//             return res.status(400).json({ message: "ID progress tidak valid!" });
+//         }
+
+//         // Ambil progress dari database berdasarkan ID
+//         const progress = await prisma.readingProgress.findUnique({
+//             where: { id: progressId },
+//             select: {
+//                 juz: true,
+//                 status: true,
+//                 surah: true,
+//                 catatan: true,
+//                 user: {
+//                     select: { username: true }
+//                 }
+//             }
+//         });
+
+//         if (!progress) {
+//             return res.status(404).json({ message: "Progress tidak ditemukan!" });
+//         }
+
+//         console.log("✅ Data progress:", progress);
+//         res.status(200).json({
+//             message: "Progress ditemukan!",
+//             data: {
+//                 juz: progress.juz,
+//                 status: progress.status,
+//                 surah: progress.surah,
+//                 catatan: progress.catatan,
+//                 username: progress.user?.username || "Anonim"
+//             }
+//         });
+//     } catch (error) {
+//         console.error("⚠ Error saat mengambil progress:", error.message);
+//         res.status(500).json({ error: error.message });
+//     }
+// });
+
+router.get("/progress/:id", async (req, res) => {
+    try {
+        const juzNumber = req.params.id; // Menggunakan juz sebagai parameter
+        console.log("🆔 Mencari progress dengan JUZ:", juzNumber);
+
+        if (isNaN(juzNumber)) {
+            return res.status(400).json({ message: "Nomor JUZ tidak valid!" });
+        }
+
+        // Ambil progress dari database berdasarkan JUZ
+        const progress = await prisma.readingProgress.findFirst({
+            where: { juz: juzNumber },
+            select: {
+                juz: true,
+                status: true,
+                surah: true,
+                catatan: true,
+                user: {
+                    select: { username: true }
+                }
+            }
+        });
+
+        if (!progress) {
+            return res.status(404).json({ message: "Progress tidak ditemukan untuk JUZ ini!" });
+        }
+
+        console.log("✅ Data progress:", progress);
+        res.status(200).json({
+            message: "Progress ditemukan!",
+            data: {
+                juz: progress.juz,
+                status: progress.status,
+                surah: progress.surah,
+                catatan: progress.catatan,
+                username: progress.user?.username || "Anonim"
+            }
+        });
+    } catch (error) {
+        console.error("⚠ Error saat mengambil progress:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
+router.get("/", authorizationAdmin, async (req, res) => {
     try {
         console.log("📢 GET /api/reading dipanggil");
         const readingProgress = await readingProgressService.getAllUserProgress();
@@ -94,94 +161,84 @@ router.get("/", async (req, res) => {
 
 
 
-
-
-// ✅ Ambil progress membaca berdasarkan userId (hanya user sendiri atau admin)
-// router.get("/progress/:userId", authorizeJWT, async (req, res) => {
+// router.put("/progress/:id", async (req, res) => {
 //     try {
-//         const userId = parseInt(req.params.userId);
-//         console.log("User ID dari token:", req.user.userId, "| User ID yang diminta:", userId);
+//         const progressId = parseInt(req.params.id);
+//         console.log("🆔 Menerima update untuk Progress ID:", progressId);
 
-//         // Cegah user melihat progress orang lain kecuali admin
-//         if (req.user.role !== "admin" && req.user.userId !== userId) {
-//             return res.status(403).json({ message: "Anda tidak diizinkan melihat progress orang lain!" });
+//         if (isNaN(progressId)) {
+//             return res.status(400).json({ message: "ID progress tidak valid!" });
 //         }
 
-//         const progress = await readingProgressService.getUserReadingProgress(userId);
-//         console.log("📜 Data progress yang dikirim ke frontend:", progress);
-//         if (!progress.length) {
-//             return res.status(404).json({ message: "Tidak ada progress membaca untuk user ini" });
+//         // Ambil progress dari database
+//         const progress = await readingProgressService.getProgressById(progressId);
+//         if (!progress) {
+//             return res.status(404).json({ message: "Progress tidak ditemukan!" });
 //         }
 
-//         res.status(200).json({ data: progress, message: "Progress berhasil diambil!" });
+//         console.log("✅ Data sebelum update:", progress);
+//         console.log("🆕 Data baru dari FE:", req.body);
+
+//         // **Perbaiki daftar ENUM status**
+//         const validStatus = ["belum_dibaca", "Sedang_dilakukan", "Selesai"];
+//         let statusFormatted = req.body.status?.trim();
+
+//         if (statusFormatted && !validStatus.includes(statusFormatted)) {
+//             return res.status(400).json({ 
+//                 message: `Status tidak valid! Harus salah satu dari: ${validStatus.join(", ")}` 
+//             });
+//         }
+
+//         // **Tentukan nilai isReading berdasarkan status**
+//         let isReading = progress.isReading; 
+//         if (statusFormatted === "Sedang_dilakukan") isReading = true;
+//         if (statusFormatted === "Selesai") isReading = false;
+
+//         // **Update progress**
+//         const updatedProgress = await prisma.readingProgress.update({
+//             where: { id: progressId },
+//             data: {
+//                 status: statusFormatted || progress.status,
+//                 surah: req.body.surah || progress.surah,
+//                 catatan: req.body.catatan || progress.catatan,
+//                 isReading: isReading
+//             }
+//         });
+
+//         console.log("✅ Data setelah update:", updatedProgress);
+//         res.json({ message: "Progress berhasil diperbarui", data: updatedProgress });
+
 //     } catch (error) {
+//         console.error("⚠ Error di backend:", error.message);
 //         res.status(500).json({ error: error.message });
 //     }
 // });
 
-// router.put("/progress/:id", authorizeJWT, async (req, res) => {
-//     try {
-//         const progressId = parseInt(req.params.id);
-//         const { status } = req.body; // Status bisa: "belum dibaca", "sedang dilakukan", atau "selesai"
-        
-//         if (!status) {
-//             return res.status(400).json({ message: "Status wajib diisi!" });
-//         }
-
-//         // Cari progress berdasarkan ID
-//         const existingProgress = await prisma.readingProgress.findUnique({
-//             where: { id: progressId }
-//         });
-
-//         if (!existingProgress) {
-//             return res.status(404).json({ message: "Progress tidak ditemukan!" });
-//         }
-
-//         // Pastikan hanya pemilik atau admin yang bisa update
-//         if (req.user.role !== "admin" && req.user.userId !== existingProgress.userId) {
-//             return res.status(403).json({ message: "Anda tidak diizinkan mengubah progress orang lain!" });
-//         }
-
-//         // Update progress
-//         const updatedProgress = await prisma.readingProgress.update({
-//             where: { id: progressId },
-//             data: { status }
-//         });
-
-//         res.status(200).json({ message: "Progress berhasil diperbarui!", data: updatedProgress });
-//     } catch (error) {
-//         console.error("❌ Error saat memperbarui progress:", error);
-//         res.status(500).json({ message: "Gagal memperbarui progress" });
-//     }
-// });
-
-
-
-router.put("/progress/:id", async (req, res) => {
+router.put("/progress/:juz", async (req, res) => {
     try {
-        const progressId = parseInt(req.params.id);
-        console.log("🆔 Menerima update untuk Progress ID:", progressId);
+        const juz = req.params.juz.trim(); // Ambil juz dari URL (string)
+        console.log("🆔 Menerima update untuk Juz:", juz);
 
-        if (isNaN(progressId)) {
-            console.error("⚠ ID progress tidak valid!");
-            return res.status(400).json({ message: "ID progress tidak valid!" });
+        // Cek apakah juz valid
+        if (!juz) {
+            return res.status(400).json({ message: "Juz tidak boleh kosong!" });
         }
 
-        // Ambil progress dari database
-        const progress = await readingProgressService.getProgressById(progressId);
-        console.log("📄 Data progress dari DB:", progress);
+        // Cek apakah progress dengan juz tersebut ada
+        const progress = await prisma.readingProgress.findFirst({
+            where: { juz: juz }
+        });
 
         if (!progress) {
-            console.error("⚠ Progress tidak ditemukan di database!");
-            return res.status(404).json({ message: "Progress tidak ditemukan!" });
+            return res.status(404).json({ message: "Progress tidak ditemukan untuk Juz ini!" });
         }
 
         console.log("✅ Data sebelum update:", progress);
         console.log("🆕 Data baru dari FE:", req.body);
 
-        // Pastikan status sesuai ENUM
-        const statusFormatted = req.body.status?.toUpperCase().trim();
-        const validStatus = [belum_dibaca, Sedang_dilakukan,Selesai];
+        // Perbaiki daftar ENUM status
+        const validStatus = ["belum_dibaca", "Sedang_dilakukan", "Selesai"];
+        let statusFormatted = req.body.status?.trim();
 
         if (statusFormatted && !validStatus.includes(statusFormatted)) {
             return res.status(400).json({ 
@@ -190,33 +247,30 @@ router.put("/progress/:id", async (req, res) => {
         }
 
         // Tentukan nilai isReading berdasarkan status
-        let isReading = progress.isReading; // Default dari data lama
+        let isReading = progress.isReading;
+        if (statusFormatted === "Sedang_dilakukan") isReading = true;
+        if (statusFormatted === "Selesai") isReading = false;
 
-        if (statusFormatted === "Sedang_dilakukan") {
-            isReading = true;
-        } else if (statusFormatted === "Selesai") {
-            isReading = false;
-        }
-
-        // Update data di database
-        const updatedProgress = await prisma.readingProgress.update({
-            where: { id: progressId },
+        // **Update progress berdasarkan juz**
+        const updatedProgress = await prisma.readingProgress.updateMany({
+            where: { juz: juz },
             data: {
                 status: statusFormatted || progress.status,
                 surah: req.body.surah || progress.surah,
                 catatan: req.body.catatan || progress.catatan,
-                isReading: isReading, // Update isReading sesuai status
-            },
+                isReading: isReading
+            }
         });
 
         console.log("✅ Data setelah update:", updatedProgress);
-        res.json({ message: "Progress berhasil diperbarui", data: updatedProgress });
+        res.json({ message: "Progress berhasil diperbarui berdasarkan Juz", data: updatedProgress });
 
     } catch (error) {
         console.error("⚠ Error di backend:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
+
 
 
 // ✅ Admin bisa melihat daftar user yang sedang membaca
@@ -232,22 +286,6 @@ router.get("/active-users", authorizationAdmin, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
-// ✅ Hapus progress membaca (hanya admin)
-// router.delete("/progress/:id", authorizationAdmin, async (req, res) => {
-//     try {
-//         const progressId = parseInt(req.params.id);
-
-//         const deletedProgress = await readingProgressService.removeReadingProgress(progressId);
-//         if (!deletedProgress) {
-//             return res.status(404).json({ message: "Progress tidak ditemukan!" });
-//         }
-
-//         res.status(200).json({ message: "Progress berhasil dihapus!" });
-//     } catch (error) {
-//         res.status(500).json({ error: error.message });
-//     }
-// });
 
 router.delete("/progress/:id", authorizationAdmin, async (req, res) => {
     try {
@@ -265,6 +303,21 @@ router.delete("/progress/:id", authorizationAdmin, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+router.delete("/progress", async (req, res) => {
+    try {
+        const deletedData = await readingProgressService.removeAllReadingProgress();
+
+        if (!deletedData) {
+            return res.status(404).json({ message: "Tidak ada progress yang dihapus!" });
+        }
+
+        res.json({ message: "Semua progress berhasil dihapus!", deletedCount: deletedData.count });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 
 module.exports = router;

@@ -13,23 +13,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User{
-  id Int @id @default(autoincrement())
-  username String @unique
-  email String @unique
-  password String
-  role Role
+model User {
+  id              Int               @id @default(autoincrement())
+  username        String            @unique
+  email           String            @unique
+  password        String
+  role            Role
   readingProgress ReadingProgress[]
-
 }
 
-enum Role{
+enum Role {
   User
   Admin
 }
 
-model ReadingProgress{
-  id Int    @id @default(autoincrement())
+model ReadingProgress {
+  id        Int      @id @default(autoincrement())
   userId    Int
   juz       String
   surah     String?
@@ -40,9 +39,9 @@ model ReadingProgress{
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) // ✅ Tambahkan onDelete: Cascade
 }
-enum Status{
+
+enum Status {
   belum_dibaca
   Sedang_dilakukan
   Selesai
 }
-
