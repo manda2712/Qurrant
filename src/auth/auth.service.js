@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const userRepository = require('./auth.repository');
 
 function generateToken(user) {
-    return jwt.sign({userId: user.id, username:user.username, email: user.email, role: user.role}, process.env.JWT_SECRET, {expiresIn: '1hr'})
+    return jwt.sign({userId: user.id, username:user.username, email: user.email, role: user.role}, process.env.JWT_SECRET, {expiresIn: '7d'})
 }
 
 async function register(username, email, password) {
