@@ -4,29 +4,29 @@ const prisma = require("../db");
 
 async function createProgress(progressData) {
     try {
-        // 1️⃣ Cek apakah juz sudah dipilih oleh orang lain dan masih aktif
-        const existingJuz = await prisma.readingProgress.findFirst({
-            where: { 
-                juz: progressData.juz,
-                isReading: true // Pastikan hanya progress aktif yang dicek
-            }
-        });
+        // // 1️⃣ Cek apakah juz sudah dipilih oleh orang lain dan masih aktif
+        // const existingJuz = await prisma.readingProgress.findFirst({
+        //     where: { 
+        //         juz: progressData.juz,
+        //         isReading: true // Pastikan hanya progress aktif yang dicek
+        //     }
+        // });
 
-        if (existingJuz) {
-            throw new Error("Juz ini sudah dipilih oleh orang lain!");
-        }
+        // if (existingJuz) {
+        //     throw new Error("Juz ini sudah dipilih oleh orang lain!");
+        // }
 
-        // 2️⃣ Cek apakah user sudah memiliki progress aktif
-        const userHasProgress = await prisma.readingProgress.findFirst({
-            where: { 
-                userId: progressData.userId,
-                isReading: true // Hanya cek progress yang masih aktif
-            }
-        });
+        // // 2️⃣ Cek apakah user sudah memiliki progress aktif
+        // const userHasProgress = await prisma.readingProgress.findFirst({
+        //     where: { 
+        //         userId: progressData.userId,
+        //         isReading: true // Hanya cek progress yang masih aktif
+        //     }
+        // });
 
-        if (userHasProgress) {
-            throw new Error("Setiap user hanya bisa memiliki satu progress aktif!");
-        }
+        // if (userHasProgress) {
+        //     throw new Error("Setiap user hanya bisa memiliki satu progress aktif!");
+        // }
 
         // 3️⃣ Jika lolos validasi, buat progress baru
         const newProgress = await prisma.readingProgress.create({ data: progressData });

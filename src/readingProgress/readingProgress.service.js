@@ -16,11 +16,11 @@ async function addReadingProgress(userId, juz, surah, catatan) {
             return { success: false, message: "Juz harus berupa angka antara 1-30!", status: 400 };
         }
 
-        // Cek apakah juz sudah dipilih oleh user lain
-        const isJuzTaken = await readingProgressRepository.findJuzProgress(userId, juz);
-        if (isJuzTaken) {
-            return { success: false, message: "Juz ini sudah dipilih oleh orang lain!", status: 400 };
-        }
+        // // Cek apakah juz sudah dipilih oleh user lain
+        // const isJuzTaken = await readingProgressRepository.findJuzProgress(userId, juz);
+        // if (isJuzTaken) {
+        //     return { success: false, message: "Juz ini sudah dipilih oleh orang lain!", status: 400 };
+        // }
 
         // Buat progress baru jika semua validasi lolos
         const progress = {
