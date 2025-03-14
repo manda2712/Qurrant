@@ -11,9 +11,9 @@ app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 
-// app.listen(port, () => {
-//   console.log(`Example app listening on port ${port}`)
-// })
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
 
 const authController = require("./auth/auth.controller")
 app.use("/api/auth", authController)
@@ -24,4 +24,4 @@ app.use("/api/user", userController)
 const readingController = require("./readingProgress/readingProgress.controller")
 app.use("/api/reading", readingController)
 
-module.exports = app;
+// module.exports = app;
