@@ -19,6 +19,8 @@ app.use("/api/user", userController)
 const readingController = require("./readingProgress/readingProgress.controller")
 app.use("/api/reading", readingController)
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`)
+// })
+
+export default app;
