@@ -2,9 +2,10 @@
   "name": "alquran",
   "version": "1.0.0",
   "description": "",
-  "main": "src/app.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "nodemon app.js"
+    "dev": "nodemon index.js",
+    "start": "node src/index.js"
   },
   "author": "",
   "license": "ISC",
