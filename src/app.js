@@ -4,7 +4,7 @@ const port = 3000
 const cors = require('cors')
 
 app.use(express.json());
-app.use(cors({ origin: "https://qurrant-frontend.vercel.app" }));
+app.use(cors({ origin: "*" }));
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
