@@ -4,7 +4,7 @@ const port = 3000
 const cors = require('cors')
 
 app.use(express.json());
-app.use(cors({ origin: "https://qurrant-amanda-andi-tallagus-projects.vercel.app" }));
+app.use(cors({ origin: "https://qurrant-amanda-andi-tallagus-projects.vercel.app/" }));
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
